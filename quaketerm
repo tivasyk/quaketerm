@@ -1,0 +1,99 @@
+#!/bin/bash
+# ------------------------------------------------------------------------------
+# quaketerm v0.4
+# a script to lauch a single instance of a terminal (terminator) in a quake mode
+# (drop-down): attach to a hotkey (win+q for exampple) and hit the combination
+# to launch/hide/unhide the terminal
+# acknowledgement: this script was initially based off a much simpler one found
+# at https://www.linuxjournal.com/magazine/hack-and-automate-your-desktop-wmctrl
+# dependencies: wmctrl, cut, xdotool
+# known issue: upon hiding the terminal does not loose focus (this really needs
+# fixing...)
+# ------------------------------------------------------------------------------
+# changelog:
+# v0.4
+#   switch shading for minimizing to solve focus problem!
+# v0.3
+#   xdotool to fix focus issue (pass focus to previous running app)
+# v0.2
+#   setting terminal size in %, autocentering, code cleanup
+# v0.1
+#   first working version, terminal title, code cleanup
+# ------------------------------------------------------------------------------
+
+main () {
+  # SET these variables to setup the desired quake-like terminal dimentions
+  local TERMINAL_WIDTH_REL=80	  # in %
+  local TERMINAL_HEIGHT_REL=70	# in %
+  local TERMINAL_X=-1           # if set to -1 will center automatically
+  local TERMINAL_Y=0            # default is 0 (top of screen); set to -1 to center vertically
+  local TERMINAL_TITLE="Quaketerminal"
+
+  # do not edit these variables: defined internally
+  local DESKTOP_SIZE="0x0"
+  local DESKTOP_WIDTH=0		  # in px
+  local DESKTOP_HEIGHT=0		# in px
+  local TERMINAL_WIDTH=0    # in px
+  local TERMINAL_HEIGHT=0   # in px
+  readonly TAB=$(echo -e "\t")
+
+  # out of the regular desctops list provided by wmctl -d cut out one line
+  # for the active desktop and then cut out the desktop size (in WxH format)
+  DESKTOP_SIZE=$(wmctrl -d | grep " \* " | cut -d " " -f 5 )
+
+  # divide the desktop size string into x and y
+  DESKTOP_WIDTH=$(echo "$DESKTOP_SIZE" | cut -d "x" -f 1 )
+  DESKTOP_HEIGHT=$(echo "$DESKTOP_SIZE" | cut -d "x" -f 2 )
+
+  # do some checks on the settings
+  if [[ ${TERMINAL_WIDTH_REL} -gt 100 ]]; then
+    $TERMINAL_WIDTH_REL=100
+  fi
+  if [[ ${TERMINAL_HEIGHT_REL} -gt 100 ]]; then
+    $TERMINAL_HEIGHT_REL=100
+  fi
+  if [[ ${TERMINAL_X} -gt ${DESKTOP_WIDTH} ]]; then
+    $TERMINAL_X=-1
+  fi
+  if [[ ${TERMINAL_Y} -gt ${DESKTOP_HEIGHT} ]]; then
+    $TERMINAL_Y=0
+  fi
+
+  # calculate absolute terminal width x height based on relative size in %
+  # and the desktop size (gives integer result in bash (no float math)
+  TERMINAL_WIDTH=$(( ${DESKTOP_WIDTH}*${TERMINAL_WIDTH_REL}/100 ))
+  TERMINAL_HEIGHT=$(( ${DESKTOP_HEIGHT}*${TERMINAL_HEIGHT_REL}/100 ))
+  
+  # calculate position (x of the left top corner) for the terminal window
+  # (the y coordinate should be set by user, usually just 0)
+  if [[ ${TERMINAL_X} -lt 0 ]]; then
+    TERMINAL_X=$(( (${DESKTOP_WIDTH}-${TERMINAL_WIDTH})/2 ))
+  fi
+  if [[ ${TERMINAL_Y} -lt 0 ]]; then
+    TERMINAL_Y=$(( (${DESKTOP_HEIGHT}-${TERMINAL_HEIGHT})/2 ))
+  fi
+
+  # check if the terminal window with the set title exists already
+  # and if not -- launch the terminal with the set title and geometry
+  wmctrl -l | grep "${TERMINAL_TITLE}"
+  if [[ $? -ne 0 ]]; then
+    terminator --title="${TERMINAL_TITLE}" --geometry="${TERMINAL_WIDTH}"x"${TERMINAL_HEIGHT}"+"${TERMINAL_X}"+"${TERMINAL_Y}" &
+  fi
+  
+  # now the terminal window should be running
+  # unshade and bring to the front if shaded
+  if [[ -f $HOME/.quaketerm.shaded ]]; then
+    wmctrl -F -R "${TERMINAL_TITLE}"
+#   wmctrl -F -r "${TERMINAL_TITLE}" -b remove,below,shaded
+    rm $HOME/.quaketerm.shaded
+  # instead of shading, just minimize the window to pass focus to next app
+  else
+    xdotool windowminimize $( xdotool search --name "${TERMINAL_TITLE}" )
+    touch $HOME/.quaketerm.shaded
+  fi
+}
+
+# main program loop
+main
+
+exit 0
