@@ -77,7 +77,11 @@ main () {
   # and if not -- launch the terminal with the set title and geometry
   wmctrl -l | grep "${TERMINAL_TITLE}"
   if [[ $? -ne 0 ]]; then
+    if [[ -f $HOME/.quaketerm.shaded ]]; then
+      rm $HOME/.quaketerm.shaded
+    fi
     terminator --title="${TERMINAL_TITLE}" --geometry="${TERMINAL_WIDTH}"x"${TERMINAL_HEIGHT}"+"${TERMINAL_X}"+"${TERMINAL_Y}" &
+    exit 0
   fi
   
   # now the terminal window should be running

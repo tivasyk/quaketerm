@@ -9,7 +9,7 @@ Usage:
 $ ./quaketerm
 ```
 
-##Setup:
+##Setup
 Copy the quaketerm script to ~/bin (or elsewhere), chmod it to be run easily, make sure the terminator terminal emulator is installed (also wmctrl 
 and xdotool for manipulating windows) and give it a try by running quaketerm. Setting up a hotkey (Meta-Q for example) is what makes the script 
 actually usefull.
